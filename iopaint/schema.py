@@ -271,7 +271,7 @@ class ApiConfig(BaseModel):
     interactive_seg_device: Device
     enable_remove_bg: bool
     remove_bg_device: Device
-    remove_bg_model: str
+    remove_bg_model: RemoveBGModel
     enable_anime_seg: bool
     enable_realesrgan: bool
     realesrgan_device: Device

@@ -16,7 +16,22 @@ from iopaint.const import (
     DIFFUSERS_SDXL_INPAINT_CLASS_NAME,
     ANYTEXT_NAME,
 )
-from iopaint.model.original_sd_configs import get_config_files
+
+# 使用try-except来处理导入错误
+try:
+    from iopaint.model.original_sd_configs import get_config_files
+except ImportError as e:
+    logger.warning(f"Failed to import get_config_files: {e}")
+    # 提供一个fallback函数
+    def get_config_files():
+        """Fallback function when original_sd_configs module is not available"""
+        current_dir = Path(__file__).parent / "model" / "original_sd_configs"
+        return {
+            "v1": current_dir / "v1-inference.yaml",
+            "v2": current_dir / "v2-inference-v.yaml", 
+            "xl": current_dir / "sd_xl_base.yaml",
+            "xl_refiner": current_dir / "sd_xl_refiner.yaml",
+        }
 
 
 def cli_download_model(model: str):
@@ -54,11 +69,19 @@ def get_sd_model_type(model_abs_path: str) -> Optional[ModelType]:
         from diffusers import StableDiffusionInpaintPipeline
 
         try:
+            config_files = get_config_files()
+            config_file = config_files.get("v1")
+            
+            # 检查配置文件是否存在
+            if config_file and not config_file.exists():
+                logger.warning(f"Config file not found: {config_file}, using default config")
+                config_file = None
+                
             StableDiffusionInpaintPipeline.from_single_file(
                 model_abs_path,
                 load_safety_checker=False,
                 num_in_channels=9,
-                original_config_file=get_config_files()["v1"],
+                original_config_file=config_file,
             )
             model_type = ModelType.DIFFUSERS_SD_INPAINT
         except ValueError as e:
@@ -82,11 +105,19 @@ def get_sdxl_model_type(model_abs_path: str) -> Optional[ModelType]:
         from diffusers import StableDiffusionXLInpaintPipeline
 
         try:
+            config_files = get_config_files()
+            config_file = config_files.get("xl")
+            
+            # 检查配置文件是否存在
+            if config_file and not config_file.exists():
+                logger.warning(f"Config file not found: {config_file}, using default config")
+                config_file = None
+                
             model = StableDiffusionXLInpaintPipeline.from_single_file(
                 model_abs_path,
                 load_safety_checker=False,
                 num_in_channels=9,
-                original_config_file=get_config_files()["xl"],
+                original_config_file=config_file,
             )
             if model.unet.config.in_channels == 9:
                 # https://github.com/huggingface/diffusers/issues/6610
