@@ -11,7 +11,7 @@ import { convertToBase64, srcToFile } from "@/lib/utils"
 import axios from "axios"
 
 export const API_ENDPOINT = import.meta.env.DEV
-  ? import.meta.env.VITE_BACKEND + "/api/v1"
+  ? "/api/v1"  // 在开发模式下使用Vite代理
   : "/api/v1"
 
 const api = axios.create({

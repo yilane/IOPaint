@@ -254,3 +254,174 @@ export const convertToBase64 = (fileOrBlob: File | Blob): Promise<string> => {
     reader.readAsDataURL(fileOrBlob)
   })
 }
+
+// 图片缓存相关工具函数
+export const CACHED_IMAGE_KEY = 'iopaint_cached_image'
+export const CACHED_IMAGE_INFO_KEY = 'iopaint_cached_image_info'
+
+export interface CachedImageInfo {
+  fileName: string
+  fileType: string
+  width: number
+  height: number
+  timestamp: number
+  lastModified: number // 添加原始文件的lastModified时间戳
+}
+
+/**
+ * 将图片文件保存到localStorage
+ */
+export async function saveImageToCache(file: File): Promise<void> {
+  try {
+    // 将文件转换为base64
+    const base64 = await convertToBase64(file)
+    
+    // 保存图片数据
+    localStorage.setItem(CACHED_IMAGE_KEY, base64)
+    
+    // 保存图片信息
+    const info: CachedImageInfo = {
+      fileName: file.name,
+      fileType: file.type,
+      width: 0, // 将在加载图片后更新
+      height: 0, // 将在加载图片后更新
+      timestamp: Date.now(),
+      lastModified: file.lastModified
+    }
+    localStorage.setItem(CACHED_IMAGE_INFO_KEY, JSON.stringify(info))
+  } catch (error) {
+    console.error('Failed to save image to cache:', error)
+  }
+}
+
+/**
+ * 从localStorage加载缓存的图片
+ */
+export async function loadImageFromCache(): Promise<File | null> {
+  try {
+    const base64 = localStorage.getItem(CACHED_IMAGE_KEY)
+    const infoStr = localStorage.getItem(CACHED_IMAGE_INFO_KEY)
+    
+    if (!base64 || !infoStr) {
+      return null
+    }
+    
+    const info: CachedImageInfo = JSON.parse(infoStr)
+    
+    // 检查缓存是否过期（24小时）
+    const isExpired = Date.now() - info.timestamp > 24 * 60 * 60 * 1000
+    if (isExpired) {
+      clearImageCache()
+      return null
+    }
+    
+    // 将base64转换回文件，保留原始的lastModified时间戳
+    const blob = dataURItoBlob(base64)
+    const file = new File([blob], info.fileName, { 
+      type: info.fileType,
+      lastModified: info.lastModified || info.timestamp // 兼容旧缓存数据
+    })
+    
+    return file
+  } catch (error) {
+    console.error('Failed to load image from cache:', error)
+    clearImageCache()
+    return null
+  }
+}
+
+/**
+ * 获取缓存的图片信息
+ */
+export function getCachedImageInfo(): CachedImageInfo | null {
+  try {
+    const infoStr = localStorage.getItem(CACHED_IMAGE_INFO_KEY)
+    if (!infoStr) return null
+    
+    const info: CachedImageInfo = JSON.parse(infoStr)
+    
+    // 检查缓存是否过期
+    const isExpired = Date.now() - info.timestamp > 24 * 60 * 60 * 1000
+    if (isExpired) {
+      clearImageCache()
+      return null
+    }
+    
+    return info
+  } catch (error) {
+    console.error('Failed to get cached image info:', error)
+    return null
+  }
+}
+
+/**
+ * 更新缓存图片的尺寸信息
+ */
+export function updateCachedImageSize(width: number, height: number): void {
+  try {
+    const infoStr = localStorage.getItem(CACHED_IMAGE_INFO_KEY)
+    if (!infoStr) return
+    
+    const info: CachedImageInfo = JSON.parse(infoStr)
+    info.width = width
+    info.height = height
+    
+    localStorage.setItem(CACHED_IMAGE_INFO_KEY, JSON.stringify(info))
+  } catch (error) {
+    console.error('Failed to update cached image size:', error)
+  }
+}
+
+/**
+ * 清除图片缓存
+ */
+export function clearImageCache(): void {
+  localStorage.removeItem(CACHED_IMAGE_KEY)
+  localStorage.removeItem(CACHED_IMAGE_INFO_KEY)
+}
+
+/**
+ * 检查是否有缓存的图片
+ */
+export function hasCachedImage(): boolean {
+  const base64 = localStorage.getItem(CACHED_IMAGE_KEY)
+  const info = getCachedImageInfo()
+  return !!(base64 && info)
+}
+
+/**
+ * 清理最近使用图片中的重复项
+ */
+export function cleanupDuplicateRecentImages(): number {
+  const RECENT_IMAGES_KEY = 'iopaint-recent-images'
+  
+  try {
+    const recentImagesStr = localStorage.getItem(RECENT_IMAGES_KEY)
+    if (!recentImagesStr) return 0
+    
+    const recentImages = JSON.parse(recentImagesStr)
+    if (!Array.isArray(recentImages)) return 0
+    
+    const originalCount = recentImages.length
+    
+    // 去重逻辑：基于文件名、大小和修改时间
+    const uniqueImages = recentImages.filter((img, index, arr) => {
+      return arr.findIndex(item => 
+        item.name === img.name && 
+        item.size === img.size &&
+        Math.abs(item.lastModified - img.lastModified) < 1000
+      ) === index
+    })
+    
+    if (uniqueImages.length < originalCount) {
+      localStorage.setItem(RECENT_IMAGES_KEY, JSON.stringify(uniqueImages))
+      console.log(`清理重复图片: ${originalCount} -> ${uniqueImages.length}`)
+      return originalCount - uniqueImages.length
+    }
+    
+    return 0
+  } catch (error) {
+    console.error('清理重复图片失败:', error)
+    return 0
+  }
+}

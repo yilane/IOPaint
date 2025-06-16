@@ -34,6 +34,10 @@ import {
   generateMask,
   loadImage,
   srcToFile,
+  saveImageToCache,
+  loadImageFromCache,
+  updateCachedImageSize,
+  clearImageCache,
 } from "./utils"
 import inpaint, { getGenInfo, postAdjustMask, runPlugin } from "./api"
 import { toast } from "@/components/ui/use-toast"
@@ -161,6 +165,10 @@ type AppState = {
   serverConfig: ServerConfig
 
   settings: Settings
+  
+  // 缓存相关状态
+  hasCachedData: boolean
+  isLoadingCache: boolean
 }
 
 type AppAction = {
@@ -234,6 +242,11 @@ type AppAction = {
 
   adjustMask: (operate: AdjustMaskOperate) => Promise<void>
   clearMask: () => void
+  
+  // 缓存相关方法
+  loadCachedImage: () => Promise<void>
+  clearCache: () => void
+  setHasCachedData: (value: boolean) => void
 }
 
 const defaultValues: AppState = {
@@ -362,6 +375,10 @@ const defaultValues: AppState = {
     powerpaintTask: PowerPaintTask.text_guided,
     adjustMaskKernelSize: 12,
   },
+  
+  // 缓存相关状态
+  hasCachedData: false,
+  isLoadingCache: false,
 }
 
 export const useStore = createWithEqualityFn<AppState & AppAction>()(
@@ -940,8 +957,21 @@ export const useStore = createWithEqualityFn<AppState & AppAction>()(
             })
           }
         }
+        
+        // 将新图片保存到缓存
+        try {
+          await saveImageToCache(file)
+          set((state) => {
+            state.hasCachedData = true
+          })
+        } catch (error) {
+          console.error('保存图片到缓存失败:', error)
+        }
+        
         set((state) => {
           state.file = file
+          state.imageWidth = 0
+          state.imageHeight = 0
           state.interactiveSegState = castDraft(
             defaultValues.interactiveSegState
           )
@@ -979,6 +1009,11 @@ export const useStore = createWithEqualityFn<AppState & AppAction>()(
       },
 
       setImageSize: (width: number, height: number) => {
+        console.log(`[setImageSize] Setting image size to: ${width} × ${height}`)
+        
+        // 更新缓存中的图片尺寸信息
+        updateCachedImageSize(width, height)
+        
         // 根据图片尺寸调整 brushSize 的 scale
         set((state) => {
           state.imageWidth = width
@@ -1140,6 +1175,59 @@ export const useStore = createWithEqualityFn<AppState & AppAction>()(
         set((state) => {
           state.editorState.extraMasks = []
           state.editorState.curLineGroup = []
+        })
+      },
+      
+      // 缓存相关方法
+      loadCachedImage: async () => {
+        set((state) => {
+          state.isLoadingCache = true
+        })
+        
+        try {
+          const cachedFile = await loadImageFromCache()
+          if (cachedFile) {
+            // 直接设置文件状态，避免触发setFile的缓存逻辑
+            set((state) => {
+              state.file = cachedFile
+              state.imageWidth = 0
+              state.imageHeight = 0
+              state.interactiveSegState = castDraft(
+                defaultValues.interactiveSegState
+              )
+              state.editorState = castDraft(defaultValues.editorState)
+              state.cropperState = defaultValues.cropperState
+              state.hasCachedData = true
+            })
+            console.log('成功加载缓存的图片:', cachedFile.name)
+          } else {
+            set((state) => {
+              state.hasCachedData = false
+            })
+          }
+        } catch (error) {
+          console.error('加载缓存图片失败:', error)
+          set((state) => {
+            state.hasCachedData = false
+          })
+        } finally {
+          set((state) => {
+            state.isLoadingCache = false
+          })
+        }
+      },
+      
+      clearCache: () => {
+        clearImageCache()
+        set((state) => {
+          state.hasCachedData = false
+        })
+        console.log('已清除图片缓存')
+      },
+      
+      setHasCachedData: (value: boolean) => {
+        set((state) => {
+          state.hasCachedData = value
         })
       },
     })),

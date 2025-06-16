@@ -13,16 +13,12 @@ const Slider = React.forwardRef<
       "relative flex w-full touch-none select-none items-center",
       className
     )}
-    tabIndex={-1}
     {...props}
   >
-    <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-primary/20 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50">
-      <SliderPrimitive.Range className="absolute h-full bg-primary data-[disabled]:cursor-not-allowed " />
+    <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-gray-700">
+      <SliderPrimitive.Range className="absolute h-full bg-yellow-400" />
     </SliderPrimitive.Track>
-    <SliderPrimitive.Thumb
-      tabIndex={-1}
-      className="block h-4 w-4 rounded-full border border-primary/60 bg-background shadow transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[disabled]:cursor-not-allowed"
-    />
+    <SliderPrimitive.Thumb className="block h-5 w-5 rounded-full border-2 border-yellow-400 bg-gray-900 ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
   </SliderPrimitive.Root>
 ))
 Slider.displayName = SliderPrimitive.Root.displayName

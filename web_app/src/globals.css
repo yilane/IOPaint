@@ -2,7 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-html { font-family: "Inter", "system-ui"; overflow: hidden; }
+html { 
+  font-family: "Inter", "system-ui"; 
+  overflow: hidden; 
+}
+
+/* 强制应用暗色主题 */
+html, body {
+  @apply bg-gray-900 text-gray-100;
+}
 
 @supports (font-variation-settings: normal) {
   html { font-family: "Inter var", "system-ui"; }

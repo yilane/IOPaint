@@ -385,7 +385,7 @@ def adjust_mask(mask: np.ndarray, kernel_size: int, operate):
                 iterations=1,
             )
     res_mask = np.zeros((mask.shape[0], mask.shape[1], 4), dtype=np.uint8)
-    res_mask[mask > 128] = [255, 203, 0, int(255 * 0.73)]
+    res_mask[mask > 128] = [255, 204, 0, 255]
     res_mask = cv2.cvtColor(res_mask, cv2.COLOR_BGRA2RGBA)
     return res_mask
 
@@ -405,6 +405,6 @@ def gen_frontend_mask(bgr_or_gray_mask):
     res_mask = np.zeros(
         (bgr_or_gray_mask.shape[0], bgr_or_gray_mask.shape[1], 4), dtype=np.uint8
     )
-    res_mask[bgr_or_gray_mask > 128] = [255, 203, 0, int(255 * 0.73)]
+    res_mask[bgr_or_gray_mask > 128] = [255, 204, 0, 255]
     res_mask = cv2.cvtColor(res_mask, cv2.COLOR_BGRA2RGBA)
     return res_mask
